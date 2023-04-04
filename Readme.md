@@ -7,18 +7,18 @@
 - [Camera Mount](https://cad.onshape.com/documents/228bddf0c8fe227d6238339f/w/07235dd6cc83dffb4aa64e34/e/c662a7628ecc89cd6f884a7e?renderMode=0&uiState=642b7af37612b95cb88c6ea0)
 ### Software
 #### Camera
-- PiCamera2 framework
-- MAC/PC framework
-- Vision Pipeline
-- ZeroMQ publishing
+- PiCamera2 framework: piCamera.py
+- MAC/PC framework: CV2Camera.py
+- Vision Pipeline: BallLocator.py and grip.py
+
 #### Robotic Arm
 - meArm, kinematics
 - JoyStick
-- Throw
-- ZeroMQ Receiver 
-- Defense - Attack
+- Throw: throw.py
+- ZeroMQ Receiver/Sender: zmqServer.py zmqClient.py
+- Defense - Attack: not yet
 
-#### Running Python Program at Boot
+#### Running python program automatically after booting
 
 ``` 
 cd /lib/systemd/system/
