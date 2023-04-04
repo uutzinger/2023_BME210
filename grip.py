@@ -11,25 +11,31 @@ class WhiteBall:
     def __init__(self):
         """initializes all values to presets or None if need to be set
         """
+        
+        # Minium required circularity
         self.__circularity = 0.5
 
+        # Region of Intereset Coordinats. This rectangle will be analyzed
         self.startX = 0
         self.endX   = 320 - 1
         self.startY = 100
         self.endY   = 240 - 1 
 
+        # Image Size
         self.__resize_image_width = 320.0
         self.__resize_image_height = 240.0
         self.__resize_image_interpolation = cv2.INTER_CUBIC
 
         self.resize_image_output = None
 
+        # Make smooth boundaries
         self.__blur_input = self.resize_image_output
         self.__blur_type = BlurType.Gaussian_Blur
         self.__blur_radius = 2
 
         self.blur_output = None
 
+         # Go after colored object
         self.__hsv_threshold_input = self.blur_output
         self.__hsv_threshold_hue = [0.0,180.0]
         self.__hsv_threshold_saturation = [0.0, 40.]
@@ -37,6 +43,7 @@ class WhiteBall:
 
         self.hsv_threshold_output = None
         
+        # Remove small items
         self.__cv_erode_src = self.hsv_threshold_output
         self.__cv_erode_kernel = None
         self.__cv_erode_anchor = (-1, -1)
@@ -51,6 +58,7 @@ class WhiteBall:
 
         self.find_contours_output = None
 
+        # Filter Contours with size and solidity
         self.__filter_contours_contours = self.find_contours_output
         self.__filter_contours_min_area = 50.0
         self.__filter_contours_min_perimeter = 0
@@ -75,7 +83,8 @@ class WhiteBall:
         self.__resize_image_input = source0
         (self.resize_image_output) = self.__resize_image(self.__resize_image_input, self.__resize_image_width, self.__resize_image_height, self.__resize_image_interpolation)
 
-        # Extract ROI
+        # Extract ROI:
+        # Added by hand
         self.roi_image_output = self.resize_image_output[self.startY:self.endY,self.startX:self.endX,:] 
         
         # Step Blur0:
@@ -100,7 +109,6 @@ class WhiteBall:
 
         # Circularity and center of object
         # UUs custom stuff
-        
         candidates = []
         for c in self.filter_contours_output:
             area = cv2.contourArea(c)
@@ -111,7 +119,8 @@ class WhiteBall:
                 MM = cv2.moments(c)
                 cX = int(MM["m10"] / MM["m00"])
                 cY = int(MM["m01"] / MM["m00"])
-                candidates.append([len(approx), cX, cY])
+                candidates.append([circularity, cX, cY])
+                # candidates.append([len(approx), cX, cY])
 
         # find most circular object
         if len(candidates) > 0:
