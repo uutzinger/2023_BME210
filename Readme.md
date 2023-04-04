@@ -17,3 +17,37 @@
 - Throw
 - ZeroMQ Receiver 
 - Defense - Attack
+
+#### Running Python Program at Boot
+
+``` 
+cd /lib/systemd/system/
+sudo nano my.service
+```
+should have following conent
+```
+[Unit]
+Description=Hello World
+After=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python /home/pi/myprogram.py
+Restart=on-abort
+
+[Install]
+WantedBy=multi-user.target
+```
+Update the file, make it executable and run it
+```
+sudo chmod 644 /lib/systemd/system/my.service
+chmod +x /home/pi/myprogram.py
+sudo systemctl daemon-reload
+sudo systemctl enable my.service
+sudo systemctl start my.service
+```
+
+And check it its running
+```
+sudo systemctl status my.service
+```
