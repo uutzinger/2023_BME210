@@ -51,3 +51,7 @@ And check it its running
 ```
 sudo systemctl status my.service
 ```
+Stop if you want to modify it
+```
+sudo systemctl stop my.service
+```
