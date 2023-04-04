@@ -13,6 +13,11 @@ class WhiteBall:
         """
         self.__circularity = 0.5
 
+        self.startX = 0
+        self.endX   = 320 - 1
+        self.startY = 100
+        self.endY   = 240 - 1 
+
         self.__resize_image_width = 320.0
         self.__resize_image_height = 240.0
         self.__resize_image_interpolation = cv2.INTER_CUBIC
@@ -27,24 +32,33 @@ class WhiteBall:
 
         self.__hsv_threshold_input = self.blur_output
         self.__hsv_threshold_hue = [0.0,180.0]
-        self.__hsv_threshold_saturation = [0.0, 32]
+        self.__hsv_threshold_saturation = [0.0, 40.]
         self.__hsv_threshold_value = [150., 255.0]
 
         self.hsv_threshold_output = None
+        
+        self.__cv_erode_src = self.hsv_threshold_output
+        self.__cv_erode_kernel = None
+        self.__cv_erode_anchor = (-1, -1)
+        self.__cv_erode_iterations = 1
+        self.__cv_erode_bordertype = cv2.BORDER_CONSTANT
+        self.__cv_erode_bordervalue = (-1)
+        
+        self.cv_erode_output = None
 
-        self.__find_contours_input = self.hsv_threshold_output
+        self.__find_contours_input = self.cv_erode_output
         self.__find_contours_external_only = False
 
         self.find_contours_output = None
 
         self.__filter_contours_contours = self.find_contours_output
-        self.__filter_contours_min_area = 150.0
+        self.__filter_contours_min_area = 50.0
         self.__filter_contours_min_perimeter = 0
         self.__filter_contours_min_width = 0
-        self.__filter_contours_max_width = 1000
+        self.__filter_contours_max_width = 1000.
         self.__filter_contours_min_height = 0
-        self.__filter_contours_max_height = 1000
-        self.__filter_contours_solidity = [80, 100]
+        self.__filter_contours_max_height = 1000.
+        self.__filter_contours_solidity = [60, 100]
         self.__filter_contours_max_vertices = 1000000
         self.__filter_contours_min_vertices = 0
         self.__filter_contours_min_ratio = 0
@@ -61,16 +75,23 @@ class WhiteBall:
         self.__resize_image_input = source0
         (self.resize_image_output) = self.__resize_image(self.__resize_image_input, self.__resize_image_width, self.__resize_image_height, self.__resize_image_interpolation)
 
+        # Extract ROI
+        self.roi_image_output = self.resize_image_output[self.startY:self.endY,self.startX:self.endX,:] 
+        
         # Step Blur0:
-        self.__blur_input = self.resize_image_output
+        self.__blur_input = self.roi_image_output
         (self.blur_output) = self.__blur(self.__blur_input, self.__blur_type, self.__blur_radius)
 
         # Step HSV_Threshold0:
         self.__hsv_threshold_input = self.blur_output
         (self.hsv_threshold_output) = self.__hsv_threshold(self.__hsv_threshold_input, self.__hsv_threshold_hue, self.__hsv_threshold_saturation, self.__hsv_threshold_value)
 
+        # Step CV_erode0:
+        self.__cv_erode_src = self.hsv_threshold_output
+        (self.cv_erode_output) = self.__cv_erode(self.__cv_erode_src, self.__cv_erode_kernel, self.__cv_erode_anchor, self.__cv_erode_iterations, self.__cv_erode_bordertype, self.__cv_erode_bordervalue)
+
         # Step Find_Contours0:
-        self.__find_contours_input = self.hsv_threshold_output
+        self.__find_contours_input = self.cv_erode_output
         (self.find_contours_output) = self.__find_contours(self.__find_contours_input, self.__find_contours_external_only)
 
         # Step Filter_Contours0:
@@ -78,6 +99,8 @@ class WhiteBall:
         (self.filter_contours_output) = self.__filter_contours(self.__filter_contours_contours, self.__filter_contours_min_area, self.__filter_contours_min_perimeter, self.__filter_contours_min_width, self.__filter_contours_max_width, self.__filter_contours_min_height, self.__filter_contours_max_height, self.__filter_contours_solidity, self.__filter_contours_max_vertices, self.__filter_contours_min_vertices, self.__filter_contours_min_ratio, self.__filter_contours_max_ratio)
 
         # Circularity and center of object
+        # UUs custom stuff
+        
         candidates = []
         for c in self.filter_contours_output:
             area = cv2.contourArea(c)
@@ -146,6 +169,21 @@ class WhiteBall:
         """
         out = cv2.cvtColor(input, cv2.COLOR_BGR2HSV)
         return cv2.inRange(out, (hue[0], sat[0], val[0]),  (hue[1], sat[1], val[1]))
+
+    @staticmethod
+    def __cv_erode(src, kernel, anchor, iterations, border_type, border_value):
+        """Expands area of lower value in an image.
+        Args:
+           src: A numpy.ndarray.
+           kernel: The kernel for erosion. A numpy.ndarray.
+           iterations: the number of times to erode.
+           border_type: Opencv enum that represents a border type.
+           border_value: value to be used for a constant border.
+        Returns:
+            A numpy.ndarray after erosion.
+        """
+        return cv2.erode(src, kernel, anchor, iterations = (int) (iterations +0.5),
+                            borderType = border_type, borderValue = border_value)
 
     @staticmethod
     def __find_contours(input, external_only):

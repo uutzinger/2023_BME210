@@ -27,17 +27,28 @@ while (not stop):
     display_img = cv2.resize(img, ((int)(320), (int)(240)), 0, 0)
     
     process.process(img)
+
     if len(process.ball) > 0:
-        x = process.ball[1]
-        y = process.ball[2] 
+        x = process.ball[1] + process.startX
+        y = process.ball[2] + process.startY
         hsv = cv2.cvtColor(display_img, cv2.COLOR_BGR2HSV)
         cv2.drawMarker(display_img, (x, y),  (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
         txt = "{},{},{}".format(hsv[y,x,0], hsv[y,x,1], hsv[y,x,2])
         cv2.putText(display_img, txt, (x,y), font, fontScale, color, thickness, cv2.LINE_AA)
         
     if len(process.filter_contours_output) > 0:
+        # fix the offset of the region of interest
+        x_offset, y_offset = process.startX, process.startY
+        for contour in process.filter_contours_output:
+            # contour with new offset is created
+            contour += (x_offset, y_offset)
         cv2.drawContours(display_img, process.filter_contours_output, -1, (0,255,0), 1)
 
+    x1=process.startX
+    y1=process.startY
+    x2=process.endX
+    y2=process.endY
+    cv2.rectangle(display_img, (x1, y1), (x2, y2), (255,0,0), 2)
     cv2.imshow("Camera", display_img)
     try:
         if (cv2.waitKey(1) & 0xFF == ord('q')) or (cv2.getWindowProperty("Camera", 0) < 0): stop = True
