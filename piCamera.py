@@ -14,8 +14,6 @@ picam2 = Picamera2()
 picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (640, 480)}))
 picam2.start()
 
-process = WhiteBall()
-
 font = cv2.FONT_HERSHEY_SIMPLEX
 fontScale = 0.25
 color = (0, 255, 0)
@@ -27,8 +25,6 @@ stop = False
 while (not stop):
     img = picam2.capture_array()
     display_img = cv2.resize(img, ((int)(320), (int)(240)), 0, 0)
-    
-    # process.process(img)
 
     cv2.imshow("Camera", display_img)
     try:
