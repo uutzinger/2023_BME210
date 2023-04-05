@@ -8,9 +8,9 @@
 - [Button and Switch](https://cad.onshape.com/documents/37fc9d56c03e0ac7ff1709f9/w/25abc70c3ad00bd1a8184dd3/e/0109f6ac1400af4184595fad?renderMode=0&uiState=642db2c1239de722ae9c9c14)
 ### Software
 #### Camera
-- PiCamera2 framework: piCamera.py
-- MAC/PC framework: CV2Camera.py
-- Vision Pipeline: BallLocator.py and grip.py
+- PiCamera2 framework: piCamera.py this is camera only for the raspberry pi
+- MAC/PC framework: CV2Camera.py this is camera only for your notebook computer
+- Vision Pipeline: BallLocator.py and grip.py this is my hand tuned ball locator, it still needs more work
 
 #### Robotic Arm
 - meArm, kinematics
