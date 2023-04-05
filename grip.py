@@ -83,12 +83,12 @@ class WhiteBall:
         self.__resize_image_input = source0
         (self.resize_image_output) = self.__resize_image(self.__resize_image_input, self.__resize_image_width, self.__resize_image_height, self.__resize_image_interpolation)
 
-        # Extract ROI:
-        # Added by hand
-        self.roi_image_output = self.resize_image_output[self.startY:self.endY,self.startX:self.endX,:] 
+        # Extract ROI: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        # Added by hand !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.roi_image_output = self.resize_image_output[self.startY:self.endY,self.startX:self.endX,:] # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
         
         # Step Blur0:
-        self.__blur_input = self.roi_image_output
+        self.__blur_input = self.roi_image_output # Changed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
         (self.blur_output) = self.__blur(self.__blur_input, self.__blur_type, self.__blur_radius)
 
         # Step HSV_Threshold0:
@@ -109,6 +109,7 @@ class WhiteBall:
 
         # Circularity and center of object
         # UUs custom stuff
+        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
         candidates = []
         for c in self.filter_contours_output:
             area = cv2.contourArea(c)
@@ -119,8 +120,8 @@ class WhiteBall:
                 MM = cv2.moments(c)
                 cX = int(MM["m10"] / MM["m00"])
                 cY = int(MM["m01"] / MM["m00"])
-                candidates.append([circularity, cX, cY])
-                # candidates.append([len(approx), cX, cY])
+                candidates.append([circularity, cX, cY]) # sort by circularity
+                # candidates.append([len(approx), cX, cY]) # sort by simplest perimeter shape
 
         # find most circular object
         if len(candidates) > 0:
@@ -128,7 +129,7 @@ class WhiteBall:
             self.ball = candidates[0]
         else:
             self.ball = []
-
+         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
     @staticmethod
     def __resize_image(input, width, height, interpolation):
