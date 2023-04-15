@@ -11,39 +11,22 @@ class WhiteBall:
     def __init__(self):
         """initializes all values to presets or None if need to be set
         """
-        
-        # Minium required circularity
         self.__circularity = 0.5
+        self.__minBallArea = 20
+        self.__maxBallArea = 100
 
-        # Region of Intereset Coordinats. This rectangle will be analyzed
-        self.startX = 0
-        self.endX   = 320 - 1
-        self.startY = 100
-        self.endY   = 240 - 1 
-
-        # Image Size
-        self.__resize_image_width = 320.0
-        self.__resize_image_height = 240.0
-        self.__resize_image_interpolation = cv2.INTER_CUBIC
-
-        self.resize_image_output = None
-
-        # Make smooth boundaries
-        self.__blur_input = self.resize_image_output
         self.__blur_type = BlurType.Gaussian_Blur
         self.__blur_radius = 2
 
         self.blur_output = None
 
-         # Go after colored object
         self.__hsv_threshold_input = self.blur_output
         self.__hsv_threshold_hue = [0.0,180.0]
-        self.__hsv_threshold_saturation = [0.0, 40.]
+        self.__hsv_threshold_saturation = [0.0, 20.]
         self.__hsv_threshold_value = [150., 255.0]
 
         self.hsv_threshold_output = None
         
-        # Remove small items
         self.__cv_erode_src = self.hsv_threshold_output
         self.__cv_erode_kernel = None
         self.__cv_erode_anchor = (-1, -1)
@@ -58,9 +41,8 @@ class WhiteBall:
 
         self.find_contours_output = None
 
-        # Filter Contours with size and solidity
         self.__filter_contours_contours = self.find_contours_output
-        self.__filter_contours_min_area = 50.0
+        self.__filter_contours_min_area = 20.0
         self.__filter_contours_min_perimeter = 0
         self.__filter_contours_min_width = 0
         self.__filter_contours_max_width = 1000.
@@ -79,16 +61,9 @@ class WhiteBall:
         """
         Runs the pipeline and sets all outputs to new values.
         """
-        # Step Resize_Image0:
-        self.__resize_image_input = source0
-        (self.resize_image_output) = self.__resize_image(self.__resize_image_input, self.__resize_image_width, self.__resize_image_height, self.__resize_image_interpolation)
-
-        # Extract ROI: !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        # Added by hand !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-        self.roi_image_output = self.resize_image_output[self.startY:self.endY,self.startX:self.endX,:] # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
         
         # Step Blur0:
-        self.__blur_input = self.roi_image_output # Changed!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+        self.__blur_input = source0
         (self.blur_output) = self.__blur(self.__blur_input, self.__blur_type, self.__blur_radius)
 
         # Step HSV_Threshold0:
@@ -109,27 +84,27 @@ class WhiteBall:
 
         # Circularity and center of object
         # UUs custom stuff
-        # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+        
         candidates = []
         for c in self.filter_contours_output:
             area = cv2.contourArea(c)
-            perimeter = cv2.arcLength(c, True)  
-            approx = cv2.approxPolyDP(c,0.01*perimeter,True)
-            circularity  = 4.*math.pi* area/perimeter/perimeter
-            if circularity > self.__circularity:
-                MM = cv2.moments(c)
-                cX = int(MM["m10"] / MM["m00"])
-                cY = int(MM["m01"] / MM["m00"])
-                candidates.append([circularity, cX, cY]) # sort by circularity
-                # candidates.append([len(approx), cX, cY]) # sort by simplest perimeter shape
+            if area > 20 and area < 100:
+                perimeter = cv2.arcLength(c, True)  
+                approx = cv2.approxPolyDP(c,0.01*perimeter,True)
+                circularity  = 4.*math.pi* area/perimeter/perimeter
+                if circularity > self.__circularity:
+                    MM = cv2.moments(c)
+                    cX = int(MM["m10"] / MM["m00"])
+                    cY = int(MM["m01"] / MM["m00"])
+                    candidates.append([circularity, cX, cY, area, circularity, len(approx)])
 
         # find most circular object
         if len(candidates) > 0:
-            candidates.sort(reverse=False, key=lambda x: x[0])
+            candidates.sort(reverse=True, key=lambda x: x[0])
             self.ball = candidates[0]
         else:
             self.ball = []
-         # !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
 
     @staticmethod
     def __resize_image(input, width, height, interpolation):
