@@ -11,6 +11,8 @@
 #
 # Urs Utzinger 4/14/2023
 
+display_debug = True
+text_debug = False
 ############
 # Camera
 ############
@@ -20,7 +22,7 @@ import cv2
 from picamera2 import Picamera2
 from grip import WhiteBall
 
-cv2.startWindowThread()
+if display_debug: cv2.startWindowThread()
 
 picam2 = Picamera2()
 picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (640, 480)}))
@@ -33,12 +35,13 @@ fontScale = 0.25
 color = (0, 255, 0)
 thickness = 1
 
+# Analysis region of interest in the image
 width =  320
 height = 240
-startX =  25
+startX =   0
 startY = 100
-endX =   295
-endY =   240
+endX =   320
+endY =   200
 
 #############
 # Buttons and Switch
@@ -77,20 +80,25 @@ x_offset = 0     # depends on your position in the field
 x_gain   = -1    # depends on the distance and camera angle
 z_offset = 0     # depends on the distance and camera angle
 z_gain   = 0.5   # might need to be same as x_gain but opposite sign
-motor_y  = 180   # defines the position from the goal during defense
+motor_y  = 160   # defines the position from the goal during defense
 
 # Throwing
 ##############
 ready_toThrow =  False
-# Idle Position at base in front of device
-x_idle = 145 # x coordinate
-y_idle =  60 # y coordinate
-z_idle = 110 # z coordinate
-# Start Position of throw motion
+
+# Idle Position
+xi =  -5 # x coordinate
+yi = 175 # y coordinate
+zi = -50 # z coordinate
+# Pre Start
+xp =  -5 # x coordinate
+yp = 175 # y coordinate
+zp = 110 # z coordinate
+# Start Position
 xs = 145 # x coordinate
 ys =  60 # y coordinate
 zs = 110 # z coordinate
-# End Position of throw motion
+# End Position
 xe =   0 # x coordinate
 ye = 195 # y coordinate
 ze =  90 # z coordinate
@@ -119,6 +127,7 @@ while (not stop):
     switch_state = GPIO.input(switch_pin)
     str_start    = "pushed" if start_state else "not pushed"
     str_switch   = "Defense" if switch_state else "Attack"
+    if text_debug: print("Start is {} and Switch is {}".format(str_start, str_switch))
 
     if switch_state:
         ####################################################
@@ -146,13 +155,14 @@ while (not stop):
             # pos_y.append(y)
             area = process.ball[3]
             circ = process.ball[4]  
-            approx = process.ball[5] 
-            hsv = cv2.cvtColor(display_img, cv2.COLOR_BGR2HSV)
-            cv2.drawMarker(display_img, (x, y),  (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
-            txt = "{:3n},{:3n},{:3n}".format(hsv[y,x,0], hsv[y,x,1], hsv[y,x,2])
-            cv2.putText(display_img, txt, (x,y), font, fontScale, color, thickness, cv2.LINE_AA)
-            txt = "{:3n},{:3.2f},{:3n}".format(area, circ, approx)
-            cv2.putText(display_img, txt, (x,y+8), font, fontScale, color, thickness, cv2.LINE_AA)
+            approx = process.ball[5]
+            if display_debug: 
+                hsv = cv2.cvtColor(display_img, cv2.COLOR_BGR2HSV)
+                cv2.drawMarker(display_img, (x, y),  (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
+                txt = "{:3n},{:3n},{:3n}".format(hsv[y,x,0], hsv[y,x,1], hsv[y,x,2])
+                cv2.putText(display_img, txt, (x,y), font, fontScale, color, thickness, cv2.LINE_AA)
+                txt = "{:3n},{:3.2f},{:3n}".format(area, circ, approx)
+                cv2.putText(display_img, txt, (x,y+8), font, fontScale, color, thickness, cv2.LINE_AA)
 
         # Display all contours found
         if len(process.filter_contours_output) > 0:
@@ -160,10 +170,11 @@ while (not stop):
             for contour in process.filter_contours_output:
                 # contour with new offset is created
                 contour += (startX, startY)
-            cv2.drawContours(display_img, process.filter_contours_output, -1, (0,255,0), 1)
+            if display_debug: cv2.drawContours(display_img, process.filter_contours_output, -1, (0,255,0), 1)
         # Show region of interest
-        cv2.rectangle(display_img, (startX, startY), (endX, endY), (255,0,0), 2)
-        cv2.imshow("Camera", display_img)
+        if display_debug:
+            cv2.rectangle(display_img, (startX, startY), (endX, endY), (255,0,0), 2)
+            cv2.imshow("Camera", display_img)
         
         ####
         # Move Arm depending on Ball Location
@@ -182,23 +193,28 @@ while (not stop):
         # Attack
         ####################################################
         if ready_toThrow == False:
-            arm.gotoPoint(x_idle,y_idle,z_idle)
+            arm.goDirectlyTo(arm.x,arm.y-25,arm.z)
+            time.sleep(0.5)
+            arm.goDirectlyTo(xi,yi,zi)
             ready_toThrow = True
         if start_state and ready_toThrow:
-            # Ready Set ...
+            # Ready ...
+            arm.gotoPoint(xp,yp,zp)
+            time.sleep(0.5)
+            # Set ...
             arm.gotoPoint(xs,ys,zs)
-            time.sleep(1)
+            time.sleep(0.5)
             # Go!!
             arm.goDirectlyTo(xe,ye,ze)
+            time.sleep(0.2)
             # Relax
-            arm.gotoPoint(x_idle,y_idle,z_idle)
-    
-    # print("Start is {} and Switch is {}".format(str_start, str_switch))
+            arm.gotoPoint(xi,yi,zi)
 
     # Check if user wantS to quit
-    try:
-        if (cv2.waitKey(1) & 0xFF == ord('q')) or (cv2.getWindowProperty("Camera", 0) < 0): stop = True
-    except: stop = True 
+    if display_debug:
+        try:
+            if (cv2.waitKey(1) & 0xFF == ord('q')) : stop = True
+        except: stop = True 
 
 # Clean up
 cv2.destroyAllWindows()

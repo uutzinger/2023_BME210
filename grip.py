@@ -12,7 +12,7 @@ class WhiteBall:
         """initializes all values to presets or None if need to be set
         """
         self.__circularity = 0.5
-        self.__minBallArea = 20
+        self.__minBallArea = 10
         self.__maxBallArea = 100
 
         self.__blur_type = BlurType.Gaussian_Blur

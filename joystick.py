@@ -12,7 +12,7 @@ arm = meArm.meArm() # takes inserted data from meArm.py aka calibration data
 arm.begin(0,0x70) # block address of motor controller, initializes home position (0, 150, 100) and opens Gripper
 
 x = 0 ## original x coordinate position, change as needed
-y = 100 ## original y coordinate position, change as needed
+y = 110 ## original y coordinate position, change as needed
 z = 90 ## original z coordinate position, change as needed
 
 arm.gotoPoint(x,y,z) ## HOME POSITION, can be edited to whatever you please

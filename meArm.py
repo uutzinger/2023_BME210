@@ -87,11 +87,12 @@ class meArm():
         y0 = self.y
         z0 = self.z
         dist = kinematics.distance(x0, y0, z0, x, y, z)
-        step = 10
-        i = 0
+        step = dist/100.
+        i = 0.
         while i < dist:
             self.goDirectlyTo(x0 + (x - x0) * i / dist, y0 + (y - y0) * i / dist, z0 + (z - z0) * i / dist)
             i += step
+            time.sleep(0.01)
         self.goDirectlyTo(x, y, z)
 
     def openGripper(self):

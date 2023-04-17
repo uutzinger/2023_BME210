@@ -24,10 +24,10 @@ thickness = 1
 
 width =  320
 height = 240
-startX =  25
+startX =   0
 startY = 100
-endX =   295
-endY =   240
+endX =   320
+endY =   200
 
 # Main Loop
 stop = False
