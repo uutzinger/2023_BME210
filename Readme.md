@@ -28,7 +28,7 @@ sudo nano my.service
 should have following conent
 ```
 [Unit]
-Description=Hello World
+Description=Hello Ballers
 After=multi-user.target
 
 [Service]
@@ -52,7 +52,13 @@ And check it its running
 ```
 sudo systemctl status my.service
 ```
-Stop if you want to modify it
+
+You need to stop the service if you want to modify the program.
 ```
 sudo systemctl stop my.service
+```
+
+And you can restart it again
+```
+sudo systemctl start my.service
 ```
