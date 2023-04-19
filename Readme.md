@@ -20,12 +20,14 @@
 - Defense - Attack: not yet
 
 #### Running python program automatically after booting
+This assumes you have your python program in /homne/pi. This likely is not the case so you need to adjust the folder.
+Check with ```ls /home/pi/folderitmightbein...```
 
 ``` 
 cd /lib/systemd/system/
 sudo nano my.service
 ```
-should have following conent
+The file should have the following content:
 ```
 [Unit]
 Description=Hello Ballers
@@ -39,7 +41,8 @@ Restart=on-abort
 [Install]
 WantedBy=multi-user.target
 ```
-Update the file, make it executable and run it
+
+Update the file priviledges and make it executable and run it
 ```
 sudo chmod 644 /lib/systemd/system/my.service
 chmod +x /home/pi/myprogram.py
@@ -53,7 +56,7 @@ And check it its running
 sudo systemctl status my.service
 ```
 
-You need to stop the service if you want to modify the program.
+You need to stop the service if you want to modify myprogram.py
 ```
 sudo systemctl stop my.service
 ```
