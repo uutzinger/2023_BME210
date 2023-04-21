@@ -82,6 +82,16 @@ z_offset = 0     # depends on the distance and camera angle
 z_gain   = 0.5   # might need to be same as x_gain but opposite sign
 motor_y  = 160   # defines the position from the goal during defense
 
+# Max positions if in middle of field
+# x -60.. 40
+x_max = 40
+x_min =-60
+y_max = 180
+y_min = 170
+z_max = 70
+z_min = 0
+# y 170..180
+# z   0.. 70
 # Throwing
 ##############
 ready_toThrow =  False
@@ -186,6 +196,13 @@ while (not stop):
         motor_x = x_gain*(width/2 -ball_x) + x_offset
         motor_z = z_gain*(height  -ball_y) + z_offset
         # print("{},{}".format(motor_x,motor_z))
+        if motor_x > x_max: motor_x = x_max
+        if motor_x < x_min: motor_x = x_min
+        if motor_y > y_max: motor_y = y_max
+        if motor_y < y_min: motor_y = y_min
+        if motor_z > z_max: motor_z = z_max
+        if motor_z < z_min: motor_z = z_min
+                
         arm.goDirectlyTo(motor_x, motor_y, motor_z)
         
     else:
