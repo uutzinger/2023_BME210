@@ -7,13 +7,86 @@
 
 # Imports
 import cv2
-from picamera2 import Picamera2
 import numpy as np
 import math
+import time
 from copy import copy
+from picamera2 import Picamera2
 
 DISPLAY = True
 DEBUG = False
+
+
+##############################################################################
+#  Setup
+##############################################################################
+                     
+###########################    
+# Settings Object Detection
+###########################   
+
+# Image Size and Location of Region of Interest ROI
+###################################################
+width =  320
+height = 240
+startX =  50
+startY = 100
+endX =   320-startX
+endY =   240-30
+0
+# Region of Interest Histogtram square half width
+w2  =  4   # half width of ROI
+o_x =  0   # shift left/right from center
+o_y = 25   # shift up down from center
+
+# HSV Threshold
+#########################################################
+hue = [  0.0,  35.0] # average 120, in my office 160..170
+sat = [  0.0,  40.0] # average 30,  in my office 25..35
+val = [190.0, 255.0] # average 200, in my office  205..235
+
+# Contrast Enhancement
+######################
+CLAHElimit = 3.0     # 2-10 is reasonable value
+
+# Blur
+######
+blur_radius = 2      # 1-5 is reasonable value
+
+# STD
+######
+std_window = 10      # 5-20 is reasonable value
+
+# Erode
+# Removes noise
+###############    
+iterations = 1       # 1-3 is reasonable value
+
+# Contour detect
+################
+external_only = False
+
+# Filter Contours
+#################
+min_area   = 20      # Minium ball area
+max_area   = 100     # Maximum ball area
+min_perimeter = 15   # Minimum ball perimeter
+min_width  = 10      # Width and Height of box enclosing ball
+max_width  = 50
+min_height = 10              
+max_height = 50
+solidity = [60, 100] # Range for area/convex_hull_area in percent
+max_vertices = 1000  # Number of vertices in a contour polygon
+min_vertices = 2     #
+min_ratio = 0.5      # Ratio of width to height
+max_ratio = 2.0      # Circle has ratio of 1.0
+
+# Ball Selection
+################    
+minCircularity = 0.2 # 0.0 - 1.0, circle has ratio of 1.0 (max area, min perimeter)
+maxCircularity = 1.0
+minApprox = 10       # 4-25, rectangle has smallest number
+maxApprox = 25
 
 ##############################################################################
 #  Support Functions
@@ -54,68 +127,6 @@ def plot_histogram(img, mask=None):
 
     return hist_img
 
-##############################################################################
-#  Setup
-##############################################################################
-                     
-###########################    
-# Settings Object Detection
-###########################   
-
-# Image Size and Location of Region of Interest ROI
-###################################################
-width =  320
-height = 240
-startX =   0
-startY = 100
-endX =   320
-endY =   200
-
-# HSV Threshold
-#########################################################
-hue = [100.0, 170.0] # average 120, in my office 160..170
-sat = [ 20.0,  60.0] # average 30,  in my office 25..35
-val = [150.0, 235.0] # average 200, in my office  205..235
-
-# Contrast Enhancement
-######################
-CLAHElimit = 3.0     # 2-10 is reasonable value
-
-# Blur
-######
-blur_radius = 2      # 1-5 is reasonable value
-
-# Erode
-# Removes noise
-###############    
-iterations = 1       # 1-3 is reasonable value
-
-# Contour detect
-################
-external_only = False
-
-# Filter Contours
-#################
-min_area   = 20      # Minium ball area
-max_area   = 400     # Maximum ball area
-min_perimeter = 20   # Minimum ball perimeter
-min_width  = 10      # Width and Height of box enclosing ball
-max_width  = 50
-min_height = 10              
-max_height = 50
-solidity = [60, 100] # Range for area/convex_hull_area in percent
-max_vertices = 1000  # Number of vertices in a contour polygon
-min_vertices = 2     #
-min_ratio = 0.5      # Ratio of width to height
-max_ratio = 2.0      # Circle has ratio of 1.0
-
-# Ball Selection
-################    
-minCircularity = 0.2 # 0.0 - 1.0, circle has ratio of 1.0 (max area, min perimeter)
-maxCircularity = 1.0
-minApprox = 10       # 4-25, rectangle has smallest number
-maxApprox = 25
-
 ########################################    
 # Settings camera
 ########################################    
@@ -140,7 +151,8 @@ stop = False
 
 while (not stop):
     img = picam2.capture_array()
-    
+    img=img[:,:,0:3]
+
     display_img = cv2.resize(img, ((int)(width), (int)(height)), 0, 0, cv2.INTER_CUBIC)
     
     # Extract ROI
@@ -158,22 +170,27 @@ while (not stop):
     clahe = cv2.createCLAHE(clipLimit=CLAHElimit, tileGridSize=(int(h/32), int(w/32)))
     hsv_img[:,:,2] = clahe.apply(hsv_img[:,:,2])
 
+    # Blur
+    ########################################    
+    blur_img = cv2.medianBlur(hsv_img, int(2 * round(blur_radius) + 1))
+    if DEBUG:
+        cv2.imshow("Blur", cv2.cvtColor(blur_img, cv2.COLOR_HSV2BGR))
+
     # Color ROI for center of HSV image
     ########################################
-    hsv_display_img = copy(hsv_img)
+    clahe_display_img = copy(blur_img)
 
-    w2=8
-    ROI_TL_X=int(w/2-w2)
-    ROI_TL_Y=int(h/2-w2)
-    ROI_BR_X=int(w/2+w2)
-    ROI_BR_Y=int(h/2+w2)
-    proc_roi = hsv_img[ROI_TL_Y:ROI_BR_Y,ROI_TL_X:ROI_BR_X,:] 
+    ROI_TL_X=int(w/2-w2-o_x)
+    ROI_TL_Y=int(h/2-w2-o_y)
+    ROI_BR_X=int(w/2+w2-o_x)
+    ROI_BR_Y=int(h/2+w2-o_y)
+    proc_roi = blur_img[ROI_TL_Y:ROI_BR_Y,ROI_TL_X:ROI_BR_X,:] 
     a = (np.mean(proc_roi, axis=(0,1))).astype(int)
     txt_hsv = "{:3n} | {:3n} | {:3n}".format(a[0], a[1], a[2])
-    cv2.rectangle(hsv_display_img, (ROI_TL_X,ROI_TL_Y), (ROI_BR_X, ROI_BR_Y), (0,255,0), 1)
-    cv2.putText(hsv_display_img, txt_hsv, (ROI_TL_X,ROI_TL_Y), font, fontScale, color, thickness, cv2.LINE_AA)
+    cv2.rectangle(clahe_display_img, (ROI_TL_X,ROI_TL_Y), (ROI_BR_X, ROI_BR_Y), (0,255,0), 1)
+    cv2.putText(clahe_display_img, txt_hsv, (ROI_TL_X,ROI_TL_Y), font, fontScale, color, thickness, cv2.LINE_AA)
     if DEBUG:
-        cv2.imshow("CLAHE", cv2.cvtColor(hsv_display_img, cv2.COLOR_HSV2BGR))  
+        cv2.imshow("CLAHE", cv2.cvtColor(clahe_display_img, cv2.COLOR_HSV2BGR))  
 
     # Histogram
     ########################################    
@@ -181,11 +198,22 @@ while (not stop):
         hist_img=plot_histogram(proc_roi)
         cv2.imshow("ROI Histogram", hist_img)
 
-    # Blur
-    ########################################    
-    blur_img = cv2.medianBlur(hsv_img, int(2 * round(blur_radius) + 1))
-    if DEBUG:
-        cv2.imshow("Blur", cv2.cvtColor(blur_img, cv2.COLOR_HSV2BGR))
+    # # Images areas with similar color
+    # ##################################
+    # # tic = time.perf_counter()
+    # std_scale=2
+    # std_img = cv2.resize(blur_img, ((int)(w/std_scale), (int)(h/std_scale)), 0, 0, cv2.INTER_CUBIC)
+    # pw= int(std_window/std_scale/2)
+    # std_img= np.pad(std_img, ((pw,pw), (pw,pw), (0,0)), 'reflect')
+    # img_rolled = np.lib.stride_tricks.sliding_window_view(std_img, (int(std_window/std_scale),int(std_window/std_scale)), axis=(0,1))
+    # std_img = np.std(img_rolled, axis=(3,4))
+    # std=np.sqrt(np.sum((std_img*std_img),axis=2))
+    # std=np.uint8(255.*std/np.max(std))
+    # std_img = cv2.resize(std, ((int)(w), (int)(h)), 0, 0, cv2.INTER_CUBIC)
+    # # toc = time.perf_counter()
+    # # print((toc-tic)*1000)
+    # if DEBUG:
+    #     cv2.imshow("STD", std_img)
 
     # HSV Threshold
     ########################################    
@@ -283,10 +311,6 @@ while (not stop):
         # Sort so that smallest feature is on top of list
         candidates_features.sort(reverse=True, key=lambda x: x[-1])
         # print(candidates[0])
-        ball = candidates_features[0]
-    else:
-        ball = []    
-    
     
     # # Hough Circles (Test)
     # ########################################    
@@ -329,7 +353,7 @@ while (not stop):
         # Draw detected ball
         # [cX, cY, area, perimeter, circularity, approx, ratio, solid, (1-circularity) * approx]
         # Last item in above list is feature to detect contour most resembling a circle the smaller it is
-        if len(candidates_features) > 0:
+        for i, ball in enumerate(candidates_features):
             x = ball[0] + startX
             y = ball[1] + startY
             area   = ball[2]
@@ -339,7 +363,10 @@ while (not stop):
             ratio  = ball[6]
             solid  = ball[7] 
             score  = ball[8]
-            cv2.drawMarker(display_img, (x, y),  (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
+            if i==0:
+                cv2.drawMarker(display_img, (x, y),  (255, 0, 255), cv2.MARKER_CROSS, 10, 2)
+            else:
+                cv2.drawMarker(display_img, (x, y),  (0, 0, 255), cv2.MARKER_CROSS, 10, 1)
             txt = "{:3n} | {:3.2f} | {:3n} | {:4.2f}".format(area, circ, approx, score)
             cv2.putText(display_img, txt, (x,y), font, fontScale, color, thickness, cv2.LINE_AA)
 
@@ -355,8 +382,49 @@ while (not stop):
         display_img = cv2.resize(display_img, ((int)(2*width), (int)(2*height)), 0, 0, cv2.INTER_CUBIC)
         cv2.imshow("Camera", display_img)
         try:
-            if (cv2.waitKey(1) & 0xFF == ord('q')) or (cv2.getWindowProperty("Camera", 0) < 0): stop = True
+            k = cv2.waitKey(1) & 0xFF
+            if (k == ord('q')) or (cv2.getWindowProperty("Camera", 0) < 0): 
+                stop = True
+            elif k == ord('h'):
+                hue = [hue[0]+5,hue[1]]
+                print("Hue: {}".format(hue))
+            elif k == ord('n'):
+                hue = [hue[0],hue[1]+5]
+                print("Hue: {}".format(hue))
+            elif k == ord('j'):
+                hue = [hue[0]-5,hue[1]]
+                print("Hue: {}".format(hue))
+            elif k == ord('m'):
+                hue = [hue[0],hue[1]-5]
+                print("Hue: {}".format(hue))
+
+            elif k == ord('s'):
+                sat = [sat[0]+5,sat[1]]
+                print("Sat: {}".format(sat))
+            elif k == ord('x'):
+                sat = [sat[0],sat[1]+5]
+                print("Sat: {}".format(sat))
+            elif k == ord('d'):
+                sat = [sat[0]-5,sat[1]]
+                print("Sat: {}".format(sat))
+            elif k == ord('c'):
+                sat = [sat[0],sat[1]-5]
+                print("Sat: {}".format(sat))
+                
+            elif k == ord('f'):
+                val = [val[0]+5,val[1]]
+                print("Val: {}".format(val))
+            elif k == ord('v'):
+                val = [val[0],val[1]+5]
+                print("Val: {}".format(val))
+            elif k == ord('g'):
+                val = [val[0]-5,val[1]]
+                print("Val: {}".format(val))
+            elif k == ord('b'):
+                val = [val[0],val[1]-5]
+                print("Val: {}".format(val))
+                
+
         except: stop = True 
 
 cv2.destroyAllWindows()
-
