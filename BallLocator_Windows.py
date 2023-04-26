@@ -9,10 +9,11 @@
 import cv2
 import numpy as np
 import math
+import time
 from copy import copy
 
 DISPLAY = True
-DEBUG = False
+DEBUG = True
 
 ##############################################################################
 #  Support Functions
@@ -83,6 +84,10 @@ CLAHElimit = 3.0     # 2-10 is reasonable value
 # Blur
 ######
 blur_radius = 2      # 1-5 is reasonable value
+
+# STD
+######
+std_window = 10      # 5-20 is reasonable value
 
 # Erode
 # Removes noise
@@ -175,22 +180,28 @@ while (not stop):
     clahe = cv2.createCLAHE(clipLimit=CLAHElimit, tileGridSize=(int(h/32), int(w/32)))
     hsv_img[:,:,2] = clahe.apply(hsv_img[:,:,2])
 
+    # Blur
+    ########################################    
+    blur_img = cv2.medianBlur(hsv_img, int(2 * round(blur_radius) + 1))
+    if DEBUG:
+        cv2.imshow("Blur", cv2.cvtColor(blur_img, cv2.COLOR_HSV2BGR))
+        
     # Color ROI for center of HSV image
     ########################################
-    hsv_display_img = copy(hsv_img)
+    clahe_display_img = copy(blur_img)
 
     w2=8
     ROI_TL_X=int(w/2-w2)
     ROI_TL_Y=int(h/2-w2)
     ROI_BR_X=int(w/2+w2)
     ROI_BR_Y=int(h/2+w2)
-    proc_roi = hsv_img[ROI_TL_Y:ROI_BR_Y,ROI_TL_X:ROI_BR_X,:] 
+    proc_roi = blur_img[ROI_TL_Y:ROI_BR_Y,ROI_TL_X:ROI_BR_X,:] 
     a = (np.mean(proc_roi, axis=(0,1))).astype(int)
     txt_hsv = "{:3n} | {:3n} | {:3n}".format(a[0], a[1], a[2])
-    cv2.rectangle(hsv_display_img, (ROI_TL_X,ROI_TL_Y), (ROI_BR_X, ROI_BR_Y), (0,255,0), 1)
-    cv2.putText(hsv_display_img, txt_hsv, (ROI_TL_X,ROI_TL_Y), font, fontScale, color, thickness, cv2.LINE_AA)
+    cv2.rectangle(clahe_display_img, (ROI_TL_X,ROI_TL_Y), (ROI_BR_X, ROI_BR_Y), (0,255,0), 1)
+    cv2.putText(clahe_display_img, txt_hsv, (ROI_TL_X,ROI_TL_Y), font, fontScale, color, thickness, cv2.LINE_AA)
     if DEBUG:
-        cv2.imshow("CLAHE", cv2.cvtColor(hsv_display_img, cv2.COLOR_HSV2BGR))  
+        cv2.imshow("CLAHE", cv2.cvtColor(clahe_display_img, cv2.COLOR_HSV2BGR))  
 
     # Histogram
     ########################################    
@@ -198,11 +209,22 @@ while (not stop):
         hist_img=plot_histogram(proc_roi)
         cv2.imshow("ROI Histogram", hist_img)
 
-    # Blur
-    ########################################    
-    blur_img = cv2.medianBlur(hsv_img, int(2 * round(blur_radius) + 1))
+    # Images areas with similar color
+    ##################################
+    # tic = time.perf_counter()
+    std_scale=2
+    std_img = cv2.resize(blur_img, ((int)(w/std_scale), (int)(h/std_scale)), 0, 0, cv2.INTER_CUBIC)
+    pw= int(std_window/std_scale/2)
+    std_img= np.pad(std_img, ((pw,pw), (pw,pw), (0,0)), 'reflect')
+    img_rolled = np.lib.stride_tricks.sliding_window_view(std_img, (int(std_window/std_scale),int(std_window/std_scale)), axis=(0,1))
+    std_img = np.std(img_rolled, axis=(3,4))
+    std=np.sqrt(np.sum((std_img*std_img),axis=2))
+    std=np.uint8(255.*std/np.max(std))
+    std_img = cv2.resize(std, ((int)(w), (int)(h)), 0, 0, cv2.INTER_CUBIC)
+    # toc = time.perf_counter()
+    # print((toc-tic)*1000)
     if DEBUG:
-        cv2.imshow("Blur", cv2.cvtColor(blur_img, cv2.COLOR_HSV2BGR))
+        cv2.imshow("STD", std_img)
 
     # HSV Threshold
     ########################################    
@@ -299,10 +321,6 @@ while (not stop):
         # Sort by score which is feature at last column of list, 
         # Sort so that smallest feature is on top of list
         candidates_features.sort(reverse=True, key=lambda x: x[-1])
-        # print(candidates[0])
-        ball = candidates_features[0]
-    else:
-        ball = []    
     
     
     # # Hough Circles (Test)
@@ -346,7 +364,7 @@ while (not stop):
         # Draw detected ball
         # [cX, cY, area, perimeter, circularity, approx, ratio, solid, (1-circularity) * approx]
         # Last item in above list is feature to detect contour most resembling a circle the smaller it is
-        if len(candidates_features) > 0:
+        for ball in candidates_features:
             x = ball[0] + startX
             y = ball[1] + startY
             area   = ball[2]
@@ -376,4 +394,3 @@ while (not stop):
         except: stop = True 
 
 cv2.destroyAllWindows()
-
