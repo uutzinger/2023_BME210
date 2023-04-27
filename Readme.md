@@ -23,6 +23,9 @@
 This assumes you have your python program in /homne/pi. This likely is not the case so you need to adjust the folder.
 Check with ```ls /home/pi/folderitmightbein...```
 
+The program ```myforeverpython.py``` is a blink LED program you can use to test the service.
+Pin 16 should be blinking.
+
 ``` 
 cd /lib/systemd/system/
 sudo nano my.service
@@ -35,7 +38,7 @@ After=multi-user.target
 
 [Service]
 Type=simple
-ExecStart=/usr/bin/python /home/pi/myprogram.py
+ExecStart=/usr/bin/python /home/pi/2023/myforeverpython.py
 Restart=on-abort
 
 [Install]
