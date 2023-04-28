@@ -15,9 +15,9 @@ GPIO.setup(blink_pin, GPIO.OUT)
 
 stopped  = False
 while not stopped:
-    GIPO.output(blink_pin, GPIO.HIGH)
+    GPIO.output(blink_pin, GPIO.HIGH)
     time.sleep(0.5)
-    GIPO.output(blink_pin, GPIO.LOW)
+    GPIO.output(blink_pin, GPIO.LOW)
     time.sleep(0.5)
 
 GPIO.cleanup()
