@@ -1,40 +1,25 @@
 #!/usr/bin/python3
-##############################################################################
-# BME 210 2023
-# Game Play
-##############################################################################
-# To make this work you will need
-#1)
+
+# To make this work:
 # sudo apt install -y python3-picamera2
 # sudo raspi-config
 # and disable legacy camera support
-#2)
-# meArm.py and kinematics.py
-# in the same folder as this program
-#3) 
-# meArm.py calibrated as shown in class
-##############################################################################
-# Urs Utzinger 4/14/2023
-##############################################################################
 
 DISPLAY = True
 DEBUG = False
-############
-# Imports
-############
 
+##############################################################################
+#  Setup
+##############################################################################
+
+# Imports
 import cv2
 import numpy as np
 import math
 import time
 from copy import copy
 from picamera2 import Picamera2
-import meArm
 
-##############################################################################
-#  Setup
-##############################################################################
-                     
 ###########################    
 # Settings Object Detection
 ###########################   
@@ -102,35 +87,6 @@ maxCircularity = 1.0
 minApprox = 10       # 4-25, rectangle has smallest number
 maxApprox = 25
 
-# Defense
-#########
-# Idle Position
-xi =  -5 # x coordinate
-yi = 175 # y coordinate
-zi = -50 # z coordinate
-# Defending
-x_offset = 80     # depends on your position in the field
-x_gain   = -2    # depends on the distance and camera angle
-z_offset = 0     # depends on the distance and camera angle
-z_gain   = 0.5   # might need to be same as x_gain but opposite sign
-motor_y  = 160   # defines the position from the goal during defense
-
-# Max positions for defense
-###########################
-x_max = 40
-x_min =-60
-y_max = 185
-y_min = 180
-z_max = 5
-z_min = -5
-
-# Text on display images
-########################
-font = cv2.FONT_HERSHEY_SIMPLEX
-fontScale = 0.5
-color = (0, 0, 255)
-thickness = 1
-
 ##############################################################################
 #  Support Functions
 ##############################################################################
@@ -170,34 +126,29 @@ def plot_histogram(img, mask=None):
 
     return hist_img
 
-if DISPLAY:
-    cv2.startWindowThread()
-
-arm = meArm.meArm() # takes inserted data from meArm.py aka calibration data
-arm.begin(0,0x70) #
-# Initilize the arm and camera
-arm.gotoPoint(xi,yi,zi) 
+########################################    
+# Settings camera
+########################################    
 
 picam2 = Picamera2()
 picam2.configure(picam2.create_preview_configuration(main={"format": 'XRGB8888', "size": (640, 480)}))
 picam2.start()
 
+# Text on display images
+########################
 font = cv2.FONT_HERSHEY_SIMPLEX
-fontScale = 1
-color = (0, 255, 0)
+fontScale = 0.5
+color = (0, 0, 255)
 thickness = 1
 
-pos_x = x_offset
-pos_y = z_offset
+##############################################################################
+# Main Loop
+##############################################################################
+
+cv2.startWindowThread()
 stop = False
 
-
 while (not stop):
-
-    ####################################################
-    # Detect Ball
-    ####################################################
-    
     img = picam2.capture_array()
     img=img[:,:,0:3]
 
@@ -234,7 +185,7 @@ while (not stop):
     ROI_BR_Y=int(h/2+w2-o_y)
     proc_roi = blur_img[ROI_TL_Y:ROI_BR_Y,ROI_TL_X:ROI_BR_X,:] 
     a = (np.mean(proc_roi, axis=(0,1))).astype(int)
-    txt_hsv = "{:3n} | {:3n} | {:3n}".format(a[0], a[1], a[2])
+    txt_hsv = "{:3n}|{:3n}|{:3n}".format(a[0], a[1], a[2])
     cv2.rectangle(clahe_display_img, (ROI_TL_X,ROI_TL_Y), (ROI_BR_X, ROI_BR_Y), (0,255,0), 1)
     cv2.putText(clahe_display_img, txt_hsv, (ROI_TL_X,ROI_TL_Y), font, fontScale, color, thickness, cv2.LINE_AA)
     if DEBUG:
@@ -245,6 +196,23 @@ while (not stop):
     if DISPLAY:
         hist_img=plot_histogram(proc_roi)
         cv2.imshow("ROI Histogram", hist_img)
+
+    # # Images areas with similar color
+    # ##################################
+    # # tic = time.perf_counter()
+    # std_scale=2
+    # std_img = cv2.resize(blur_img, ((int)(w/std_scale), (int)(h/std_scale)), 0, 0, cv2.INTER_CUBIC)
+    # pw= int(std_window/std_scale/2)
+    # std_img= np.pad(std_img, ((pw,pw), (pw,pw), (0,0)), 'reflect')
+    # img_rolled = np.lib.stride_tricks.sliding_window_view(std_img, (int(std_window/std_scale),int(std_window/std_scale)), axis=(0,1))
+    # std_img = np.std(img_rolled, axis=(3,4))
+    # std=np.sqrt(np.sum((std_img*std_img),axis=2))
+    # std=np.uint8(255.*std/np.max(std))
+    # std_img = cv2.resize(std, ((int)(w), (int)(h)), 0, 0, cv2.INTER_CUBIC)
+    # # toc = time.perf_counter()
+    # # print((toc-tic)*1000)
+    # if DEBUG:
+    #     cv2.imshow("STD", std_img)
 
     # HSV Threshold
     ########################################    
@@ -343,6 +311,28 @@ while (not stop):
         candidates_features.sort(reverse=True, key=lambda x: x[-1])
         # print(candidates[0])
     
+    # # Hough Circles (Test)
+    # ########################################    
+    # # channels=cv2.split(blur_img)
+    # # gray = channels[2]
+    # # gray = 255-gray
+    # gray = hsv_thresh
+    # rows = gray.shape[0]
+    # circles = cv2.HoughCircles(gray, cv2.HOUGH_GRADIENT, 2, rows / 4,
+    #                            param1=50, param2=30,
+    #                            minRadius=5, maxRadius=30)
+    # hough_img = proc_img.copy()
+    # if circles is not None:
+    #     circles = np.uint16(np.around(circles))
+    #     for i in circles[0, :]:
+    #         center = (i[0], i[1])
+    #         # circle center
+    #         cv2.circle(hough_img, center, 1, (0,255,0), 3)
+    #         # circle outline
+    #         radius = i[2]
+    #         cv2.circle(hough_img, center, radius, (0,0,255), 3)
+    # if DEBUG:
+    #     cv2.imshow("Hough", hough_img)   
                 
     # Display on Main Image
     ########################################    
@@ -365,13 +355,13 @@ while (not stop):
         for i, ball in enumerate(candidates_features):
             x = ball[0] + startX
             y = ball[1] + startY
-            area   = ball[2]
+            area      = ball[2]
             perimeter = ball[3]
-            circ   = ball[4]  
-            approx = ball[5]
-            ratio  = ball[6]
-            solid  = ball[7] 
-            score  = ball[8]
+            circ      = ball[4]  
+            approx    = ball[5]
+            ratio     = ball[6]
+            solid     = ball[7] 
+            score     = ball[8]
             if i==0:
                 cv2.drawMarker(display_img, (x, y),  (255, 0, 255), cv2.MARKER_CROSS, 10, 2)
             else:
@@ -382,7 +372,11 @@ while (not stop):
         # Draw where data for HSV histogram was taken from
         TL = (ROI_TL_X+startX,ROI_TL_Y+startY)
         BR = (ROI_BR_X+startX,ROI_BR_Y+startY)
-        cv2.rectangle(display_img, TL, BR, (0,255,0), 1)
+        x = int(startX + (ROI_BR_X+ROI_TL_X)/2)
+        y = int(startY + (ROI_BR_Y+ROI_TL_Y)/2)
+        
+        #cv2.rectangle(display_img, TL, BR, (0,255,0), 1)
+        cv2.drawMarker(display_img, (x, y),  (255, 0, 0), cv2.MARKER_CROSS, 5, 1)
 
         # Draw processed Region of Interest
         cv2.rectangle(display_img, (startX, startY), (endX, endY), (255,0,0), 2)
@@ -390,35 +384,10 @@ while (not stop):
         # Display the image twice as large to make it more visible
         display_img = cv2.resize(display_img, ((int)(2*width), (int)(2*height)), 0, 0, cv2.INTER_CUBIC)
         cv2.imshow("Camera", display_img)
-    
-    ######################################
-    # Move Arm depending on Ball Location
-    ######################################
-    if len(candidates_features) > 0:
-        ball=candidates_features[0]
-        ball_x = ball[0]
-        ball_y = ball[1]
-        motor_x = x_gain*(width/2 -ball_x) + x_offset
-        motor_z = z_gain*(height  -ball_y) + z_offset
-        # print("{},{}".format(motor_x,motor_z))
-        if motor_x > x_max: motor_x = x_max
-        if motor_x < x_min: motor_x = x_min
-        if motor_y > y_max: motor_y = y_max
-        if motor_y < y_min: motor_y = y_min
-        if motor_z > z_max: motor_z = z_max
-        if motor_z < z_min: motor_z = z_min
-                
-        arm.goDirectlyTo(motor_x, motor_y, motor_z)
-
-    if DISPLAY:
         try:
-            # Obtain the key stroke if any occured
             k = cv2.waitKey(1) & 0xFF
-            # Quit if q is pressed
             if (k == ord('q')) or (cv2.getWindowProperty("Camera", 0) < 0): 
                 stop = True
-            # Adjust HUV thresholds based on keystrokes
-            # Hue
             elif k == ord('h'):
                 hue = [hue[0]+5,hue[1]]
                 print("Hue: {}".format(hue))
@@ -431,7 +400,7 @@ while (not stop):
             elif k == ord('m'):
                 hue = [hue[0],hue[1]-5]
                 print("Hue: {}".format(hue))
-            # Sat
+
             elif k == ord('s'):
                 sat = [sat[0]+5,sat[1]]
                 print("Sat: {}".format(sat))
@@ -444,7 +413,7 @@ while (not stop):
             elif k == ord('c'):
                 sat = [sat[0],sat[1]-5]
                 print("Sat: {}".format(sat))
-            # Val
+                
             elif k == ord('f'):
                 val = [val[0]+5,val[1]]
                 print("Val: {}".format(val))
@@ -457,8 +426,8 @@ while (not stop):
             elif k == ord('b'):
                 val = [val[0],val[1]-5]
                 print("Val: {}".format(val))
+                
 
         except: stop = True 
 
-# Clean up
 cv2.destroyAllWindows()

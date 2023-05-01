@@ -217,21 +217,8 @@ GPIO.setup(switch_pin, GPIO.IN, pull_up_down=GPIO.PUD_DOWN)
 # Main Loop
 ##############################################################################
 
-############
-# Position Filtering, remove outlayers
-############
-# import collections
-# import statistics
-# this will slow response down, perhaps better to not filter
-# pos_x = collections.deque(maxlen=3) # if you want to take median of 3 locations. 
-# pos_y = collections.deque(maxlen=3)
-# pos_x.append(x_offset) # initialize
-# pos_y.append(z_offset)
-pos_x = x_offset # No position filtering
+pos_x = x_offset
 pos_y = z_offset
-
-# Main Loop
-#########################################################
 stop = False
 
 while (not stop):
@@ -581,4 +568,3 @@ while (not stop):
 # Clean up
 cv2.destroyAllWindows()
 GPIO.cleanup()
-
